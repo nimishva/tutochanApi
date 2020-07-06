@@ -16,62 +16,10 @@ const authModel = mongoose.model('Auth'); //Importing Models
 
 //User signup Function Starts here
 let signUpFn = (req,res) => {
-    console.log(req.body);
-
-//checkEmailAvailability
-let checkEmailAvailability = () =>{
-    return new Promise((resolve,reject)=>{
-        userModal.findOne({'email.emailId':req.body.email})
-        .exec((err,emailData)=>{
-            if(err){
-                let response = apiResponse.generate(true,'User creation error',403,null);
-                reject(response);
-            }else if(checkLib.isEmpty(emailData)){
-
-
-                let newUser = new userModal({
-                    
-                    userId          : shortId.generate(),
-                    password        : req.body.password != null || req.body.password != "" || req.body.password != undefined ? passwordLib.hashpassword(req.body.password):"",
-                    firstName       : req.body.name,
-                    lastName        : req.body.lastName || '',
-                    email           : { emailId: req.body.email},
-                    mobile          : req.body.mobile || '',
-
-                });// New user model ends here 
-
-                //Saving data to DB
-                newUser.save((err,newUserData)=>{
-                    if(err){
-                        let response = apiResponse.generate(true,'User creation error,',403,null);
-                         reject(response);
-                    }else{
-                        let newUserObj = newUserData.toObject();
-                        resolve(newUserObj);
-                    }
-                 })//End of saving data to DB
-
-
-            }else{
-
-                logger.error('Email exists','UserCon : checkEmailAvailability',10);
-                let response = apiResponse.generate(true,'Email already exists',403,null);
-                reject(response);
-
-            }
-
-        }) //Model find ....
-
-
-    }); //promise ends here
-
-} //checkEmailAvailability ends here
-
-
-
     // promise functions starts
     checkEmailAvailability(req,res)
     .then((resolve) =>{
+        
         delete resolve.password;
         delete resolve._id;
         delete resolve.__v;
@@ -113,23 +61,32 @@ let signInFn = (req,res) => {
 
     let validatePassword = (retrievedUserData)=>{
         return new Promise((resolve,reject)=>{
-            passwordLib.comparePassword(req.body.password,retrievedUserData.password,(err,isMatching)=>{
-                if(err){
-                    let apiResponse = apiResponse.generate(true,'Login failed',500,null);
-                    reject(apiResponse);
-                }else if(isMatching){
-                    let userDataObj = retrievedUserData.toObject();
-                    delete userDataObj.password
-                    delete userDataObj._id
-                    delete userDataObj.__v
-                    delete userDataObj.createdOn
-                    resolve(userDataObj);
-                }else{
-                //    console.log(retrievedUserData);
-                    let response = apiResponse.generate(true,'Wrong password',400,null);
-                    reject(response);
-                }
-            })// Password check ends here 
+            if(!checkLib.isEmpty(req.body.password)){
+
+                passwordLib.comparePassword(req.body.password,retrievedUserData.password,(err,isMatching)=>{
+                    if(err){
+                        let apiResponse = apiResponse.generate(true,'Login failed',500,null);
+                        reject(apiResponse);
+                    }else if(isMatching){
+                        let userDataObj = retrievedUserData.toObject();
+                        delete userDataObj.password
+                        delete userDataObj._id
+                        delete userDataObj.__v
+                        delete userDataObj.createdOn
+                        resolve(userDataObj);
+                    }else{
+                    //    console.log(retrievedUserData);
+                        let response = apiResponse.generate(true,'Wrong password',400,null);
+                        reject(response);
+                    }
+                })// Password check ends here 
+                
+            }else{
+
+                resolve(retrievedUserData);
+
+            }
+       
 
         }) //Prominse ends
     } //validatePassword ends
@@ -315,7 +272,7 @@ let getAllData = (req,res) => {
         return new Promise((resolve,reject)=>{
         let mailData = {
 
-            subject  : "Email verification",
+            subject  : "Reset Password",
             message  : `<h1>Hello</h1>
                        <p>You are recieving this mail, because we have recieved a password reset request for your account</p>
 
@@ -444,6 +401,67 @@ let getAllData = (req,res) => {
     }
 
 
+    //checkEmailAvailability
+let checkEmailAvailability = (req,res) =>{
+    return new Promise((resolve,reject)=>{
+        userModal.findOne({'email.emailId':req.body.email})
+        .exec((err,emailData)=>{
+            if(err){
+                let response = apiResponse.generate(true,'User creation error',403,null);
+                reject(response);
+            }else if(checkLib.isEmpty(emailData)){
+
+
+                let newUser = new userModal({
+                    
+                    userId          : shortId.generate(),
+                    password        : req.body.password != null || req.body.password != "" || req.body.password != undefined ? passwordLib.hashpassword(req.body.password):"",
+                    firstName       : req.body.name,
+                    lastName        : req.body.lastName || '',
+                    email           : { emailId: req.body.email},
+                    mobile          : req.body.mobile || '',
+
+                });// New user model ends here 
+
+                //Saving data to DB
+                newUser.save((err,newUserData)=>{
+
+                    if(err){
+                        let response = apiResponse.generate(true,'User creation error,',403,null);
+                         reject(response);
+                    }else{
+                        let newUserObj = newUserData.toObject();
+                        resolve(newUserObj);
+                    }
+
+                 })//End of saving data to DB
+
+
+            }else{
+
+                if(req.body.signUptype == "social"){
+
+                    resolve(emailData);
+
+                }else{
+
+                    logger.error('Email exists','UserCon : checkEmailAvailability',10);
+                    let response = apiResponse.generate(true,'Email already exists',403,null);
+                    reject(response);
+                }
+
+              
+
+            }
+
+        }) //Model find ....
+
+
+    }); //promise ends here
+
+} //checkEmailAvailability ends here
+
+
  //Sending Mail 
  let sendMail = (tokenData)=>{
     console.log(tokenData);
@@ -508,6 +526,24 @@ emitter.on('mail',(data)=>{
         console.log(err);
     })
   });
+
+
+
+let socialSigIn = (req,res) =>{
+
+    checkEmailAvailability(req,res)
+    .then(generateToken)
+    .then((data)=>{
+        let apiresponse = apiResponse.generate(false,'User authenticated',200,data);
+        res.send(apiresponse);
+    })
+    .catch((err)=>{
+        res.send(err);
+    })
+
+
+} 
+
   
 
 
@@ -516,6 +552,7 @@ emitter.on('mail',(data)=>{
 module.exports = {
     signUpFn         : signUpFn,
     signInFn         : signInFn,
+    socialSigIn      : socialSigIn,
     getAllData       : getAllData,
     getUserId        : getUserId,
     getUsersList     : getUsersList,

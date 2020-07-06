@@ -210,6 +210,8 @@ let setRouter = (app) =>{
 	   }
 	 */
 
+     //Login with Social Media 
+	 app.post(`${baseUrl}/socialSignIn`,userController.socialSigIn);
 
 
     //get userid  by name
