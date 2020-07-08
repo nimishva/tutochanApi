@@ -72,7 +72,6 @@ let signInFn = (req,res) => {
                         delete userDataObj.password
                         delete userDataObj._id
                         delete userDataObj.__v
-                        delete userDataObj.createdOn
                         resolve(userDataObj);
                     }else{
                     //    console.log(retrievedUserData);
